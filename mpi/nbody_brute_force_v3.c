@@ -2,7 +2,8 @@
 ** nbody_brute_force.c - nbody simulation using the brute-force algorithm (O(n*n))
 ** PARALLEL MPI VERSION
 ** EACH PROCESS GETS A SUBSET OF PARTICLES TO SIMULATE - POSITION SYNCHRONIZATION IS DONE USING MPI_ALLGATHERV
-** CSC5001 Project. Authors: Bouharra, Toyos
+** 
+** NOTE: Warning there's an unknown bug when the number of process is odd.
 **/
 
 #include <stdio.h>
@@ -58,7 +59,7 @@ extern Window theMain;       /* declared in ui.h but are also required here.   *
 /* compute the force that a particle with position (x_pos, y_pos) and mass 'mass'
  * applies to particle p
  */
-void compute_force(particle_t*p, int pidx, double x, double y, double mass, double * xforcedelta, double * yforcedelta, int j) {
+void compute_force(particle_t*p, int pidx, double x, double y, double mass, int j,double *xf,double*yf) {
   double x_sep, y_sep, dist_sq, grav_base;
 
   x_sep = x - local_x_pos[pidx-delta0];
@@ -68,12 +69,10 @@ void compute_force(particle_t*p, int pidx, double x, double y, double mass, doub
   /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
   grav_base = GRAV_CONSTANT*(p->mass)*(mass)/dist_sq;
 
-  *xforcedelta = grav_base*x_sep;
-  *yforcedelta = grav_base*y_sep;
-  printf("process %d | F(%d,%d)=(%f,%f), delta=(%f,%f)\n", pid, pidx, j, *xforcedelta, *yforcedelta,x_sep,y_sep);
-  printf("delta val: %f,%f\n", *xforcedelta, *yforcedelta);
-  p->x_force += *xforcedelta;
-  p->y_force += *yforcedelta;
+  *xf = grav_base*x_sep;
+  *yf = grav_base*y_sep;	
+  p->x_force += *xf;
+  p->y_force += *yf;
 }
 
 /* compute the new position/velocity */
@@ -105,43 +104,37 @@ void move_particle(particle_t*p,int pidx, double step) {
   Return local computations.
 */
 void all_move_particles(double step){
-  double xforcedelta=0,yforcedelta=0;
-  //Clean send forces array.
+  //Reset force vector
+  for(int i=delta0; i<delta1; i++){
+    particles[i].x_force = 0;
+    particles[i].y_force = 0;
+  }
+  //Reset send force vector
   for(int k=0; k<msgs_to_send*send_counter;k++){
     send_x_forces[k]=0;
     send_y_forces[k]=0;
   }
 
-  //Compute intra-set forces
+  double xf=0,yf=0;
+  //Comptue forces of particles in the local subset
   for(int i=delta0; i<delta1; i++) {
-    double xforcedelta=0,yforcedelta=0;
-    particle_t*p = &particles[i];
-    p->x_force = 0;
-    p->y_force = 0;
-    for(int j=delta0; j<=i; j++){
-      if(i!=j){
-        particle_t*pj = &particles[j];
-        xforcedelta=0;
-        yforcedelta=0;
-        compute_force(&particles[i],i,x_pos[j],y_pos[j], p->mass,&xforcedelta,&yforcedelta,j);
-        printf("process %d | F(%d,%d)=(%f,%f)\n", pid, j, i, -xforcedelta, -yforcedelta);
-        pj->x_force -= xforcedelta;
-        pj->y_force -= yforcedelta;
-      }
+    for(int j=delta0; j<i; j++) {
+      particle_t*p = &particles[j];
+      /* compute the force of particle j on particle i */
+      compute_force(&particles[i],i,x_pos[j],y_pos[j], p->mass,j,&xf,&yf);
+      p->x_force -= xf;
+      p->y_force -= yf;
     }
   }
-
-  //Compute extra-set forces
-  for(int pnode=0; pnode<msgs_to_send;pnode++){
-    int delta0node = displacements[(pid+pnode+1)%P];
-    for(int j=delta0node; j<delta0node+local_nps[(pid+pnode+1)%P]; j++){
-      particle_t*p = &particles[j];
-      for(int i=delta0; i<delta1; i++){
-        xforcedelta=0;
-        yforcedelta=0;
-        compute_force(&particles[i],i,x_pos[j],y_pos[j], p->mass,&xforcedelta,&yforcedelta,j);
-        send_x_forces[pnode*local_nps[(pid+pnode+1)%P]+j-delta0node] += xforcedelta;
-        send_y_forces[pnode*local_nps[(pid+pnode+1)%P]+j-delta0node] += yforcedelta;
+  //Compute forces of particles to send
+  for(int i=delta0; i<delta1; i++){
+    for(int pnode=0; pnode<msgs_to_send;pnode++){
+      for(int j=displacements[(pid+pnode+1)%P]; j<displacements[(pid+pnode+1)%P]+local_nps[(pid+pnode+1)%P]; j++){
+        particle_t*p = &particles[j];
+        /* compute the force of particle j on particle i */
+        compute_force(&particles[i],i,x_pos[j],y_pos[j], p->mass,j,&xf,&yf);
+        send_x_forces[pnode*local_nps[(pid+pnode+1)%P]+j-displacements[(pid+pnode+1)%P]] -= xf;
+        send_y_forces[pnode*local_nps[(pid+pnode+1)%P]+j-displacements[(pid+pnode+1)%P]] -= yf;
       }
     }
   }
@@ -160,13 +153,11 @@ void all_move_particles(double step){
   MPI_Waitall(2*msgs_to_send,reqs_send,MPI_STATUSES_IGNORE);
   MPI_Waitall(2*msgs_to_recv,reqs_recv,MPI_STATUSES_IGNORE);
 
-  /* Apply received forces*/
-  for(int i=delta0;i<delta1;i++){
-    for(int j=0;j<msgs_to_recv;j++){
-      particle_t*p = &particles[i];
-      printf("process %d | F(%d,%d)=(%f,%f)\n", pid, i, j, -recv_x_forces[j*local_np+i-delta0], -recv_y_forces[j*local_np+i-delta0]);
-      p->x_force -= recv_x_forces[j*local_np+i-delta0];
-      p->y_force -= recv_y_forces[j*local_np+i-delta0];
+  //Add received forces
+  for(int p=0;p<msgs_to_recv;p++){
+    for(int i=delta0;i<delta1;i++){
+      particles[i].x_force += recv_x_forces[p*local_np+i-delta0];
+      particles[i].y_force += recv_y_forces[p*local_np+i-delta0];
     }
   }
 
@@ -210,7 +201,7 @@ void run_simulation() {
     MPI_Allreduce(MPI_IN_PLACE, &max_speed, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     MPI_Allreduce(MPI_IN_PLACE, &max_acc, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
     dt = 0.1*max_speed/max_acc;
-    break;
+
     #if DISPLAY
     /* Plot the movement of the particle */
     clear_display();
@@ -339,7 +330,6 @@ int main(int argc, char**argv){
   free(send_y_forces);
   free(reqs_send);
   free(reqs_recv);
-	printf("Process %d finished\n", pid);
 	MPI_Finalize();
   return 0;
 }
