@@ -26,9 +26,9 @@ int nparticles=10;      /* number of particles */
 float T_FINAL=1.0;     /* simulation end time */
 particle_t*particles;
 
-double sum_speed_sq = 0;
-double max_acc = 0;
-double max_speed = 0;
+float sum_speed_sq = 0;
+float max_acc = 0;
+float max_speed = 0;
 
 void init() {
   /* Nothing to do */
@@ -43,8 +43,8 @@ extern Window theMain;       /* declared in ui.h but are also required here.   *
 /* compute the force that a particle with position (x_pos, y_pos) and mass 'mass'
  * applies to particle p
  */
-void compute_force(particle_t*p, double x_pos, double y_pos, double mass) {
-  double x_sep, y_sep, dist_sq, grav_base;
+void compute_force(particle_t*p, float x_pos, float y_pos, float mass) {
+  float x_sep, y_sep, dist_sq, grav_base;
 
   x_sep = x_pos - p->x_pos;
   y_sep = y_pos - p->y_pos;
@@ -58,20 +58,20 @@ void compute_force(particle_t*p, double x_pos, double y_pos, double mass) {
 }
 
 /* compute the new position/velocity */
-void move_particle(particle_t*p, double step) {
+void move_particle(particle_t*p, float step) {
 
   p->x_pos += (p->x_vel)*step;
   p->y_pos += (p->y_vel)*step;
-  double x_acc = p->x_force/p->mass;
-  double y_acc = p->y_force/p->mass;
+  float x_acc = p->x_force/p->mass;
+  float y_acc = p->y_force/p->mass;
   p->x_vel += x_acc*step;
   p->y_vel += y_acc*step;
 
   /* compute statistics */
-  double cur_acc = (x_acc*x_acc + y_acc*y_acc);
+  float cur_acc = (x_acc*x_acc + y_acc*y_acc);
   cur_acc = sqrt(cur_acc);
-  double speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
-  double cur_speed = sqrt(speed_sq);
+  float speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
+  float cur_speed = sqrt(speed_sq);
 
   sum_speed_sq += speed_sq;
   max_acc = MAX(max_acc, cur_acc);
@@ -85,7 +85,7 @@ void move_particle(particle_t*p, double step) {
   Update positions, velocity, and acceleration.
   Return local computations.
 */
-void all_move_particles(double step)
+void all_move_particles(float step)
 {
   /* First calculate force for particles. */
   int i;
@@ -125,7 +125,7 @@ void print_all_particles(FILE* f) {
 }
 
 void run_simulation() {
-  double t = 0.0, dt = 0.01;
+  float t = 0.0, dt = 0.01;
   while (t < T_FINAL && nparticles>0) {
     /* Update time. */
     t += dt;
@@ -179,7 +179,7 @@ int main(int argc, char**argv)
 
   gettimeofday(&t2, NULL);
 
-  double duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+  float duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
 #ifdef DUMP_RESULT
   FILE* f_out = fopen("particles.log", "w");

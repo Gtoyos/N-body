@@ -9,10 +9,10 @@ struct particle;
   including position, velocity, and mass.
 */
 typedef struct particle{
-  double x_pos, y_pos;		/* position of the particle */
-  double x_vel, y_vel;		/* velocity of the particle */
-  double x_force, y_force;	/* gravitational forces that apply against this particle */
-  double mass;			/* mass of the particle */
+  float x_pos, y_pos;		/* position of the particle */
+  float x_vel, y_vel;		/* velocity of the particle */
+  float x_force, y_force;	/* gravitational forces that apply against this particle */
+  float mass;			/* mass of the particle */
   struct node* node; 		/* only used for the barnes-hut algorithm */
 } particle_t;
 

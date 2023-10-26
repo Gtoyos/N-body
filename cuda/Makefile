@@ -4,7 +4,7 @@ NVFLAGS	= -O0 -g -arch=sm_50 -lX11
 CFLAGS = -O0 -g -lX11
 LDFLAGS = -lm -lpthread -lX11
 VERBOSE	=
-TARGET	= nbody_brute_force nbody_barnes_hut nbody_brute_force_v2 nbody_brute_force_v3 nbody_brute_force_v4
+TARGET	= nbody_brute_force nbody_barnes_hut nbody_brute_force_v2 nbody_brute_force_v3
 OBJS	= ui.o xstuff.o nbody_tools.o nbody_alloc.o
 
 #DISPLAY = -DDISPLAY

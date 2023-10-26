@@ -3,7 +3,7 @@
 ** PARALLEL MPI VERSION
 ** EACH PROCESS GETS A SUBSET OF PARTICLES TO SIMULATE - POSITION SYNCHRONIZATION IS DONE USING MPI_ALLGATHERV
 ** 
-** NOTE: Warning there's an unknown bug when the number of process is odd.
+** NOTE: Warning there's an unknown bug when the number of process is even.
 **/
 
 #include <stdio.h>
@@ -27,24 +27,24 @@
 FILE* f_out=NULL;
 
 int P=1,pid=0;
-double *x_pos, *y_pos;
-double *local_x_pos,*local_y_pos;
+float *x_pos, *y_pos;
+float *local_x_pos,*local_y_pos;
 int delta0,delta1,local_np; //For mapping processes to particles.
 int *local_nps,*displacements; //For using AllgatherV
 
 int send_counter=0;
 int msgs_to_send,msgs_to_recv;
-double *send_x_forces, *send_y_forces;
-double *recv_x_forces, *recv_y_forces;
+float *send_x_forces, *send_y_forces;
+float *recv_x_forces, *recv_y_forces;
 MPI_Request *reqs_send, *reqs_recv;
 
 int nparticles=10;      /* number of particles */
 float T_FINAL=1.0;     /* simulation end time */
 particle_t*particles;
 
-double sum_speed_sq = 0;
-double max_acc = 0;
-double max_speed = 0;
+float sum_speed_sq = 0;
+float max_acc = 0;
+float max_speed = 0;
 
 void init() {
   /* Nothing to do */
@@ -59,8 +59,8 @@ extern Window theMain;       /* declared in ui.h but are also required here.   *
 /* compute the force that a particle with position (x_pos, y_pos) and mass 'mass'
  * applies to particle p
  */
-void compute_force(particle_t*p, int pidx, double x, double y, double mass, int j,double *xf,double*yf) {
-  double x_sep, y_sep, dist_sq, grav_base;
+void compute_force(particle_t*p, int pidx, float x, float y, float mass, int j,float *xf,float*yf) {
+  float x_sep, y_sep, dist_sq, grav_base;
 
   x_sep = x - local_x_pos[pidx-delta0];
   y_sep = y - local_y_pos[pidx-delta0];
@@ -76,20 +76,20 @@ void compute_force(particle_t*p, int pidx, double x, double y, double mass, int 
 }
 
 /* compute the new position/velocity */
-void move_particle(particle_t*p,int pidx, double step) {
+void move_particle(particle_t*p,int pidx, float step) {
 
   local_x_pos[pidx-delta0] += (p->x_vel)*step;
   local_y_pos[pidx-delta0] += (p->y_vel)*step;
-  double x_acc = p->x_force/p->mass;
-  double y_acc = p->y_force/p->mass;
+  float x_acc = p->x_force/p->mass;
+  float y_acc = p->y_force/p->mass;
   p->x_vel += x_acc*step;
   p->y_vel += y_acc*step;
 
   /* compute statistics */
-  double cur_acc = (x_acc*x_acc + y_acc*y_acc);
+  float cur_acc = (x_acc*x_acc + y_acc*y_acc);
   cur_acc = sqrt(cur_acc);
-  double speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
-  double cur_speed = sqrt(speed_sq);
+  float speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
+  float cur_speed = sqrt(speed_sq);
 
   sum_speed_sq += speed_sq;
   max_acc = MAX(max_acc, cur_acc);
@@ -103,7 +103,7 @@ void move_particle(particle_t*p,int pidx, double step) {
   Update positions, velocity, and acceleration.
   Return local computations.
 */
-void all_move_particles(double step){
+void all_move_particles(float step){
   //Reset force vector
   for(int i=delta0; i<delta1; i++){
     particles[i].x_force = 0;
@@ -115,7 +115,7 @@ void all_move_particles(double step){
     send_y_forces[k]=0;
   }
 
-  double xf=0,yf=0;
+  float xf=0,yf=0;
   //Comptue forces of particles in the local subset
   for(int i=delta0; i<delta1; i++) {
     for(int j=delta0; j<i; j++) {
@@ -142,13 +142,13 @@ void all_move_particles(double step){
   /* Synchronize force computation*/
   int d=0;
   for(int i=0;i<msgs_to_send;i++){
-    MPI_Isend(send_x_forces+d,local_nps[(pid+i+1)%P],MPI_DOUBLE,(pid+i+1)%P,0,MPI_COMM_WORLD,reqs_send+i);
-    MPI_Isend(send_y_forces+d,local_nps[(pid+i+1)%P],MPI_DOUBLE,(pid+i+1)%P,0,MPI_COMM_WORLD,reqs_send+i+msgs_to_send);
+    MPI_Isend(send_x_forces+d,local_nps[(pid+i+1)%P],MPI_FLOAT,(pid+i+1)%P,0,MPI_COMM_WORLD,reqs_send+i);
+    MPI_Isend(send_y_forces+d,local_nps[(pid+i+1)%P],MPI_FLOAT,(pid+i+1)%P,0,MPI_COMM_WORLD,reqs_send+i+msgs_to_send);
     d+=local_nps[(pid+i+1)%P];
   }
   for(int i=0;i<msgs_to_recv;i++){
-    MPI_Irecv(recv_x_forces+i*local_np,local_np,MPI_DOUBLE,(P+pid-i-1)%P,0,MPI_COMM_WORLD,reqs_recv+i);
-    MPI_Irecv(recv_y_forces+i*local_np,local_np,MPI_DOUBLE,(P+pid-i-1)%P,0,MPI_COMM_WORLD,reqs_recv+i+msgs_to_recv);
+    MPI_Irecv(recv_x_forces+i*local_np,local_np,MPI_FLOAT,(P+pid-i-1)%P,0,MPI_COMM_WORLD,reqs_recv+i);
+    MPI_Irecv(recv_y_forces+i*local_np,local_np,MPI_FLOAT,(P+pid-i-1)%P,0,MPI_COMM_WORLD,reqs_recv+i+msgs_to_recv);
   }
   MPI_Waitall(2*msgs_to_send,reqs_send,MPI_STATUSES_IGNORE);
   MPI_Waitall(2*msgs_to_recv,reqs_recv,MPI_STATUSES_IGNORE);
@@ -184,7 +184,7 @@ void print_all_particles(FILE* f) {
 }
 
 void run_simulation() {
-  double t = 0.0, dt = 0.01;
+  float t = 0.0, dt = 0.01;
   while (t < T_FINAL && nparticles>0) {
     /* Update time. */
     t += dt;
@@ -192,14 +192,14 @@ void run_simulation() {
     all_move_particles(dt);
 
     /* Synchronize positions*/
-		MPI_Allgatherv(local_x_pos, local_np, MPI_DOUBLE, x_pos, local_nps, displacements, MPI_DOUBLE, MPI_COMM_WORLD);
-		MPI_Allgatherv(local_y_pos, local_np, MPI_DOUBLE, y_pos, local_nps, displacements, MPI_DOUBLE, MPI_COMM_WORLD);
+		MPI_Allgatherv(local_x_pos, local_np, MPI_FLOAT, x_pos, local_nps, displacements, MPI_FLOAT, MPI_COMM_WORLD);
+		MPI_Allgatherv(local_y_pos, local_np, MPI_FLOAT, y_pos, local_nps, displacements, MPI_FLOAT, MPI_COMM_WORLD);
 
     /* Adjust dt based on maximum speed and acceleration--this
        simple rule tries to insure that no velocity will change
        by more than 10%. Share this info between all processes*/
-    MPI_Allreduce(MPI_IN_PLACE, &max_speed, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-    MPI_Allreduce(MPI_IN_PLACE, &max_acc, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &max_speed, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
+    MPI_Allreduce(MPI_IN_PLACE, &max_acc, 1, MPI_FLOAT, MPI_MAX, MPI_COMM_WORLD);
     dt = 0.1*max_speed/max_acc;
 
     #if DISPLAY
@@ -229,8 +229,8 @@ int main(int argc, char**argv){
   all_init_particles(nparticles, particles); //NOTE: We can execute this function in parallel as it is deterministic.
 
   /* create arrays to share for particle position */
-  x_pos = malloc(sizeof(double)*nparticles);
-  y_pos = malloc(sizeof(double)*nparticles);
+  x_pos = malloc(sizeof(float)*nparticles);
+  y_pos = malloc(sizeof(float)*nparticles);
   /* copy positions*/
   for(int i=0; i<nparticles;i++){
     x_pos[i] = particles[i].x_pos;
@@ -247,8 +247,8 @@ int main(int argc, char**argv){
   MPI_Allgather(&delta0, 1, MPI_INT, displacements, 1, MPI_INT, MPI_COMM_WORLD); // Share from what index each process starts.
 
 	/*Create arrays for storing local particles temporarily*/
-  local_x_pos = malloc(sizeof(double)*local_np);
-  local_y_pos = malloc(sizeof(double)*local_np);
+  local_x_pos = malloc(sizeof(float)*local_np);
+  local_y_pos = malloc(sizeof(float)*local_np);
 	for(int i=delta0; i<delta1; i++){
 		local_x_pos[i-delta0] = x_pos[i];
 		local_y_pos[i-delta0] = y_pos[i];
@@ -259,10 +259,10 @@ int main(int argc, char**argv){
   msgs_to_recv = msgs_to_send + ((P%2==0)?((pid>=P/2)?1:-1):0);
   for(int i=0;i<msgs_to_send;i++)
     send_counter+=local_nps[(pid+i+1)%P];
-  send_x_forces = malloc(sizeof(double)*msgs_to_send*send_counter);
-  send_y_forces = malloc(sizeof(double)*msgs_to_send*send_counter);
-  recv_x_forces = malloc(sizeof(double)*msgs_to_recv*local_np);
-  recv_y_forces = malloc(sizeof(double)*msgs_to_recv*local_np);
+  send_x_forces = malloc(sizeof(float)*msgs_to_send*send_counter);
+  send_y_forces = malloc(sizeof(float)*msgs_to_send*send_counter);
+  recv_x_forces = malloc(sizeof(float)*msgs_to_recv*local_np);
+  recv_y_forces = malloc(sizeof(float)*msgs_to_recv*local_np);
   reqs_send = malloc(sizeof(MPI_Request)*msgs_to_send*2);
   reqs_recv = malloc(sizeof(MPI_Request)*msgs_to_recv*2);
   for(int k=0; k<msgs_to_send*send_counter;k++){
@@ -290,7 +290,7 @@ int main(int argc, char**argv){
 
   gettimeofday(&t2, NULL);
 
-  double duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+  float duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
   #ifdef DUMP_RESULT
   if(pid==0){

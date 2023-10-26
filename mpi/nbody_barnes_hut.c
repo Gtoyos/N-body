@@ -30,9 +30,9 @@ particle_t*particles;
 node_t *root;
 
 
-double sum_speed_sq = 0;
-double max_acc = 0;
-double max_speed = 0;
+float sum_speed_sq = 0;
+float max_acc = 0;
+float max_speed = 0;
 
 void init() {
   init_alloc(8*nparticles);
@@ -49,8 +49,8 @@ extern Window theMain;       /* declared in ui.h but are also required here.   *
 /* compute the force that a particle with position (x_pos, y_pos) and mass 'mass'
  * applies to particle p
  */
-void compute_force(particle_t*p, double x_pos, double y_pos, double mass) {
-  double x_sep, y_sep, dist_sq, grav_base;
+void compute_force(particle_t*p, float x_pos, float y_pos, float mass) {
+  float x_sep, y_sep, dist_sq, grav_base;
 
   x_sep = x_pos - p->x_pos;
   y_sep = y_pos - p->y_pos;
@@ -82,10 +82,10 @@ void compute_force_on_particle(node_t* n, particle_t *p) {
     /* There are multiple particles */
 
     #define THRESHOLD 2
-    double size = n->x_max - n->x_min; // width of n
-    double diff_x = n->x_center - p->x_pos;
-    double diff_y = n->y_center - p->y_pos;
-    double distance = sqrt(diff_x*diff_x + diff_y*diff_y);
+    float size = n->x_max - n->x_min; // width of n
+    float diff_x = n->x_center - p->x_pos;
+    float diff_y = n->y_center - p->y_pos;
+    float distance = sqrt(diff_x*diff_x + diff_y*diff_y);
 
 #if BRUTE_FORCE
     /*
@@ -136,21 +136,21 @@ void compute_force_in_node(node_t *n) {
 }
 
 /* compute the new position/velocity */
-void move_particle(particle_t*p, double step, node_t* new_root) {
+void move_particle(particle_t*p, float step, node_t* new_root) {
 
   assert(p->node != NULL);
   p->x_pos += (p->x_vel)*step;
   p->y_pos += (p->y_vel)*step;
-  double x_acc = p->x_force/p->mass;
-  double y_acc = p->y_force/p->mass;
+  float x_acc = p->x_force/p->mass;
+  float y_acc = p->y_force/p->mass;
   p->x_vel += x_acc*step;
   p->y_vel += y_acc*step;
 
   /* compute statistics */
-  double cur_acc = (x_acc*x_acc + y_acc*y_acc);
+  float cur_acc = (x_acc*x_acc + y_acc*y_acc);
   cur_acc = sqrt(cur_acc);
-  double speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
-  double cur_speed = sqrt(speed_sq);
+  float speed_sq = (p->x_vel)*(p->x_vel) + (p->y_vel)*(p->y_vel);
+  float cur_speed = sqrt(speed_sq);
 
   sum_speed_sq += speed_sq;
   max_acc = MAX(max_acc, cur_acc);
@@ -168,7 +168,7 @@ void move_particle(particle_t*p, double step, node_t* new_root) {
 }
 
 /* compute the new position of the particles in a node */
-void move_particles_in_node(node_t*n, double step, node_t *new_root) {
+void move_particles_in_node(node_t*n, float step, node_t *new_root) {
   if(!n) return;
 
   if(n->particle) {
@@ -189,7 +189,7 @@ void move_particles_in_node(node_t*n, double step, node_t *new_root) {
   Update positions, velocity, and acceleration.
   Return local computations.
 */
-void all_move_particles(double step)
+void all_move_particles(float step)
 {
   /* First calculate force for particles. */
   compute_force_in_node(root);
@@ -205,7 +205,7 @@ void all_move_particles(double step)
 }
 
 void run_simulation() {
-  double t = 0.0, dt = 0.01;
+  float t = 0.0, dt = 0.01;
 
   while (t < T_FINAL && nparticles>0) {
     /* Update time. */
@@ -270,7 +270,7 @@ int main(int argc, char**argv)
 
   gettimeofday(&t2, NULL);
 
-  double duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
+  float duration = (t2.tv_sec -t1.tv_sec)+((t2.tv_usec-t1.tv_usec)/1e6);
 
 #ifdef DUMP_RESULT
   FILE* f_out = fopen("particles.log", "w");

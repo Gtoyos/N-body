@@ -2,6 +2,7 @@
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
         "nbody_tools.h": "c",
-        "xutil.h": "c"
+        "xutil.h": "c",
+        "nbody.h": "c"
     }
 }
