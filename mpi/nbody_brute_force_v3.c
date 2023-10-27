@@ -3,7 +3,7 @@
 ** PARALLEL MPI VERSION
 ** EACH PROCESS GETS A SUBSET OF PARTICLES TO SIMULATE - POSITION SYNCHRONIZATION IS DONE USING MPI_ALLGATHERV
 ** 
-** NOTE: Warning there's an unknown bug when the number of process is even.
+** 
 **/
 
 #include <stdio.h>
@@ -128,14 +128,16 @@ void all_move_particles(float step){
   }
   //Compute forces of particles to send
   for(int i=delta0; i<delta1; i++){
+    int d=0;
     for(int pnode=0; pnode<msgs_to_send;pnode++){
       for(int j=displacements[(pid+pnode+1)%P]; j<displacements[(pid+pnode+1)%P]+local_nps[(pid+pnode+1)%P]; j++){
         particle_t*p = &particles[j];
         /* compute the force of particle j on particle i */
         compute_force(&particles[i],i,x_pos[j],y_pos[j], p->mass,j,&xf,&yf);
-        send_x_forces[pnode*local_nps[(pid+pnode+1)%P]+j-displacements[(pid+pnode+1)%P]] -= xf;
-        send_y_forces[pnode*local_nps[(pid+pnode+1)%P]+j-displacements[(pid+pnode+1)%P]] -= yf;
+        send_x_forces[d+j-displacements[(pid+pnode+1)%P]] -= xf;
+        send_y_forces[d+j-displacements[(pid+pnode+1)%P]] -= yf;
       }
+      d+=local_nps[(pid+pnode+1)%P];
     }
   }
 
@@ -259,13 +261,13 @@ int main(int argc, char**argv){
   msgs_to_recv = msgs_to_send + ((P%2==0)?((pid>=P/2)?1:-1):0);
   for(int i=0;i<msgs_to_send;i++)
     send_counter+=local_nps[(pid+i+1)%P];
-  send_x_forces = malloc(sizeof(float)*msgs_to_send*send_counter);
-  send_y_forces = malloc(sizeof(float)*msgs_to_send*send_counter);
+  send_x_forces = malloc(sizeof(float)*send_counter);
+  send_y_forces = malloc(sizeof(float)*send_counter);
   recv_x_forces = malloc(sizeof(float)*msgs_to_recv*local_np);
   recv_y_forces = malloc(sizeof(float)*msgs_to_recv*local_np);
   reqs_send = malloc(sizeof(MPI_Request)*msgs_to_send*2);
   reqs_recv = malloc(sizeof(MPI_Request)*msgs_to_recv*2);
-  for(int k=0; k<msgs_to_send*send_counter;k++){
+  for(int k=0; k<send_counter;k++){
     send_x_forces[k]=0;
     send_y_forces[k]=0;
   }

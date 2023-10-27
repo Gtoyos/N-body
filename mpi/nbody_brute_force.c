@@ -64,7 +64,7 @@ void compute_force(particle_t*p, int pidx, float x, float y, float mass, int j) 
 
   p->x_force += grav_base*x_sep;
   p->y_force += grav_base*y_sep;
-  printf("process %d | F(%d,%d)=(%f,%f), delta=(%f,%f)\n", pid, pidx, j, p->x_force, p->y_force,x_sep,y_sep);
+  //printf("process %d | F(%d,%d)=(%f,%f), delta=(%f,%f)\n", pid, pidx, j, p->x_force, p->y_force,x_sep,y_sep);
 }
 
 /* compute the new position/velocity */
