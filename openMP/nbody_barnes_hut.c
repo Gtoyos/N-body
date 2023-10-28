@@ -142,7 +142,7 @@ void all_compute_forces(int start, int end) {
 }
 
 void all_move_particles(double step) {
-  compute_force_in_node(root);
+  //compute_force_in_node(root);
 
   node_t* new_root = alloc_node();
   init_node(new_root, NULL, XMIN, XMAX, YMIN, YMAX);

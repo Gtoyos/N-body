@@ -2,8 +2,8 @@
 #          b313-13 -> 16 cores / 32 threads
 
 CC	= mpicc
-CFLAGS	= -O0 -g -Wall
-LDFLAGS = -lm -lpthread -lX11
+CFLAGS	= -O0 -g -Wall -fopenmp
+LDFLAGS = -lm -lpthread -lX11 -fopenmp
 VERBOSE	=
 TARGET	= nbody_brute_force nbody_barnes_hut nbody_brute_force_v3
 OBJS	= ui.o xstuff.o nbody_tools.o nbody_alloc.o
