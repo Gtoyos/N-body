@@ -101,6 +101,13 @@ __global__ void reset_forces(particle_t* gprt, int local_np, int delta0){
   gprt[delta0+x].y_force = 0;
 }
 
+__global__ void reset_send_forces(float*g_send_x_forces,float *g_send_y_forces,int send_counter){
+  int x = blockIdx.x * blockDim.x + threadIdx.x;
+  if(x >= send_counter) return;
+  g_send_x_forces[x] = 0;
+  g_send_y_forces[x] = 0;
+}
+
 __global__ void compute_forces_local(particle_t* gprt,float* g_x_pos,float *g_y_pos,int local_np,int delta0,int nparticles){
   int x = blockIdx.x * blockDim.x + threadIdx.x;
   int y = blockIdx.y * blockDim.y + threadIdx.y;
@@ -115,7 +122,7 @@ __global__ void compute_forces_local(particle_t* gprt,float* g_x_pos,float *g_y_
 
   /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
   float grav_base = GRAV_CONSTANT*(ip->mass)*(jp->mass)/dist_sq;
-  printf("f(%d,%d): %f, %f\n",delta0+x,delta0+y, grav_base*x_sep, grav_base*y_sep);
+  //printf("f(%d,%d): %f, %f\n",delta0+x,delta0+y, grav_base*x_sep, grav_base*y_sep);
   atomicAdd(&(ip->x_force), grav_base*x_sep);
   atomicAdd(&(ip->y_force), grav_base*y_sep);  
 }
@@ -138,7 +145,7 @@ __global__ void compute_forces_external(particle_t* gprt,float* g_x_pos,float *g
 
   /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
   float grav_base = GRAV_CONSTANT*(ip->mass)*(jp->mass)/dist_sq;
-  printf("f(%d,%d): %f, %f\n",delta0+x,g_displacements[(pid+z+1)%P]+y, grav_base*x_sep, grav_base*y_sep);
+  //printf("f(%d,%d): %f, %f\n",delta0+x,g_displacements[(pid+z+1)%P]+y, grav_base*x_sep, grav_base*y_sep);
   float xf=grav_base*x_sep;
   float yf=grav_base*y_sep;
   atomicAdd(&(ip->x_force), xf);
@@ -196,13 +203,17 @@ void all_move_particles(float step){
   dim3 block(1024);
   dim3 grid2(local_np/32+1, local_np/32+1);
   dim3 block2(32,32);
-  dim3 grid3(local_np/1024+1,(local_np*2)/1024+1,msgs_to_send);
+  dim3 grid3(local_np/32+1,(local_np*2)/32+1,msgs_to_send);
   dim3 block3(32,32,1);
   dim3 grid4(local_np/1024+1,msgs_to_recv);
   dim3 block4(1024,1);
-
+  
   //set forces of particle array to 0.
   reset_forces<<<grid, block>>>(g_particles, local_np,delta0);
+  gpuErrchk( cudaPeekAtLastError() );
+  cudaDeviceSynchronize();
+
+  reset_send_forces<<<send_counter/1024+1, block>>>(g_send_x_forces, g_send_y_forces, send_counter);
   gpuErrchk( cudaPeekAtLastError() );
   cudaDeviceSynchronize();
 
@@ -275,7 +286,7 @@ void run_simulation() {
     t += dt;
     /* Move particles with the current and compute rms velocity. */
     all_move_particles(dt);
-    printf("--%f--\n",t);
+    //printf("--%f--\n",t);
     /* Copy local positions to host*/
     gpuErrchk(cudaMemcpy(local_x_pos, g_local_x_pos, local_np*sizeof(float), cudaMemcpyDeviceToHost));
     gpuErrchk(cudaMemcpy(local_y_pos, g_local_y_pos, local_np*sizeof(float), cudaMemcpyDeviceToHost));
