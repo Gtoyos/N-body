@@ -1,0 +1,24 @@
+#!/bin/bash
+
+# Number of times to run the simulation
+num_runs=10
+
+# Initialize total execution time
+total_time=0
+
+# Number of particles and simulation end time
+nparticles=1000  # You can change this value
+T_FINAL=2.0     # You can change this value
+
+for ((i = 1; i <= num_runs; i++)); do
+  echo "Run $i:"
+  # Run the nbody_brute_force program and measure execution time
+  duration=$(../sequential/nbody_brute_force $nparticles $T_FINAL | grep "Simulation took" | awk '{print $2}')
+  echo "Execution time: $duration seconds"
+  total_time=$(echo "$total_time + $duration" | bc)
+done
+
+# Calculate the average execution time
+average_time=$(echo "scale=4; $total_time / $num_runs" | bc)
+echo "Average execution time for $num_runs runs: $average_time seconds"
+
