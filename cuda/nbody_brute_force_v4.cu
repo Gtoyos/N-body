@@ -82,16 +82,15 @@ __global__ void reset_forces(particle_t* gprt, int nparticles){
   gprt[x].y_force = 0;
 }
 
-__device__ void compute_force_gpu(particle_t * gprt, float x_pos, float y_pos, float mass){
-    particle_t *ip = &gprt[x];
-  float x_sep = x_pos - gprt->x_pos;
-  float y_sep = y_pos - gprt->y_pos;
+__device__ void compute_force_gpu(particle_t * p, float x_pos, float y_pos, float mass){
+  float x_sep = x_pos - p->x_pos;
+  float y_sep = y_pos - p->y_pos;
   float dist_sq = MAX((x_sep*x_sep) + (y_sep*y_sep), 0.01);
 
   /* Use the 2-dimensional gravity rule: F = d * (GMm/d^2) */
-  float grav_base = GRAV_CONSTANT*(gprt->mass)*(mass)/dist_sq;
-  ip->x_force += grav_base*x_sep;
-  ip->y_force += grav_base*y_sep;
+  float grav_base = GRAV_CONSTANT*(p->mass)*(mass)/dist_sq;
+  p->x_force += grav_base*x_sep;
+  p->y_force += grav_base*y_sep;
 }
 __global__ void compute_forces(particle_t* gprt, int nparticles){
     int x = blockIdx.x * blockDim.x + threadIdx.x;
