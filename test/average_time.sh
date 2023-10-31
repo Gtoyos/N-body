@@ -13,11 +13,11 @@ T_FINAL=2.0     # You can change this value
 for ((i = 1; i <= num_runs; i++)); do
   echo "Run $i:"
   # Sequential
-  duration=$(../sequential/nbody_brute_force $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
+  #duration=$(../sequential/nbody_brute_force $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
   #duration=$(../sequential/nbody_barnes_hut $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
 
   #openMP
-  duration=$(../openMP/nbody_brute_force $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
+  #duration=$(../openMP/nbody_brute_force $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
   #duration=$(../openMP/nbody_barnes_hut $nparticles $T_FINAL | grep "Simulation took" | awk '{print $3}')
 
   #cuda

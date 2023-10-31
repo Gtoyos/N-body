@@ -38,3 +38,16 @@ for ((nparticles = min_particles; nparticles <= max_particles; nparticles += ste
   echo "$nparticles $average_time_brute_force" >> "$output_brute_force"
   echo "$nparticles $average_time_barnes_hut" >> "$output_barnes_hut"
 done
+
+# Plot the data using GNU Plot
+gnuplot << EOL
+set term x11 0
+set title "Number of Particles vs. Execution Time"
+set xlabel "Number of Particles"
+set ylabel "Average Execution Time (seconds)"
+set key right top
+plot "$output_brute_force" using 1:2 with lines title "Brute Force", \
+     "$output_barnes_hut" using 1:2 with lines title "Barnes-Hut"
+pause -1 "Press Enter to close the plot window"
+EOL
+

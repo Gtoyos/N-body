@@ -1,0 +1,9 @@
+average for 10 runs
+
+sequential:
+	brute: 2.2083 seconds
+	barns: 0.3827 seconds
+openMP:
+	brute: 0.3256 seconds
+	barns: 0.3012 seconds
+
