@@ -110,7 +110,7 @@ void all_move_particles(float step){
     particles[i].y_force = 0;
   }
   //Reset send force vector
-  for(int k=0; k<msgs_to_send*send_counter;k++){
+  for(int k=0; k<send_counter;k++){
     send_x_forces[k]=0;
     send_y_forces[k]=0;
   }

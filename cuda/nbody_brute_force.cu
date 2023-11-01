@@ -249,10 +249,7 @@ int main(int argc, char**argv){
   cudaFree(&g_max_speed);
   cudaFree(&g_sum_speed_sq);
   cudaFree(&g_max_acc);
-
-  gettimeofday(&t2, NULL);
-
-  float duration = (float) milliseconds;
+  float duration = (float) milliseconds/1000;
 
 #ifdef DUMP_RESULT
   FILE* f_out = fopen("particles.log", "w");

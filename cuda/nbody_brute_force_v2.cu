@@ -1,6 +1,7 @@
 /*
 ** nbody_brute_force.c - nbody simulation using the brute-force algorithm (O(n*n))
 ** NOTE: Implementation Using FP Precision.
+** In this version we use force symmetry.
 **/ 
 
 #include <stdio.h>
@@ -256,7 +257,7 @@ int main(int argc, char**argv){
 
   gettimeofday(&t2, NULL);
 
-  float duration = (float) milliseconds;
+  float duration = (float) milliseconds/1000;
 
 #ifdef DUMP_RESULT
   FILE* f_out = fopen("particles.log", "w");
